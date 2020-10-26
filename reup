@@ -1,0 +1,105 @@
+#!/bin/sh
+if [ $# != 1 ]; then
+    echo "You need enter project name!"
+    exit 1
+fi
+
+mkdir -p $1/{build,src/{assets,pages,components}}
+touch $1/{{tsconfig.json,webpack.config.js},build/index.html,src/pages/index.tsx}
+
+echo "OK: Setup directory structure"
+
+cd $1 && npm init -y
+npm i -D webpack webpack-cli typescript ts-loader
+npm i -S react react-dom @types/react @types/react-dom
+npm i -D webpack-dev-server
+
+echo "OK: Install necessary packages"
+
+LF=$'\\\x0A'
+sed -i -e 's/"test":.*/"start": "webpack-dev-server -d --open",'"$LF"'\    "build": "webpack"/g' package.json
+sed -i -e 's/"main":.*/"main": "",/' package.json
+rm package.json-e
+
+cat << EOS > tsconfig.json
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "target": "es5",
+    "module": "es2015",
+    "jsx": "react",
+    "moduleResolution": "node",
+    "lib": [
+      "es2020",
+      "dom"
+    ]
+  }
+}
+EOS
+
+echo "OK: Setup tsconfig.json"
+
+cat << EOS > webpack.config.js
+const path = require('path')
+const buildPath = path.resolve(__dirname, 'build')
+
+module.exports = {
+  mode: 'development',
+  entry: './src/pages/index.tsx',
+  module: {
+    rules: [
+      {
+        test: /\.tsx?$/,
+        use: 'ts-loader'
+      }
+    ]
+  },
+  output: {
+    path: buildPath,
+    filename: 'bundle.js'
+  },
+  devServer: {
+    contentBase: buildPath
+  },
+  resolve: {
+    extensions: ['.ts', '.tsx', '.js', '.jsx']
+  },
+  target: ['web', 'es5'],
+}
+EOS
+
+echo "OK: Setup webpack.config.js"
+
+cat << EOS > src/pages/index.tsx
+import * as React from 'react'
+import * as ReactDOM from 'react-dom'
+
+const App = () => {
+  return (
+    <>
+      <h1>Hello, World!</h1>
+      <h2>Successfully all setups with reup!</h2>
+    </>
+  )
+}
+
+ReactDOM.render(<App/>, document.querySelector('#root'))
+EOS
+
+echo "OK: Setup index.tsx"
+
+cat << EOS > build/index.html
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>$1</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="./bundle.js"></script>
+  </body>
+</html>
+EOS
+
+echo "OK: Setup index.html"
